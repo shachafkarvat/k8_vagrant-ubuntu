@@ -11,18 +11,25 @@ EOF
 echo "==============> Prerequisite <============== "
 echo "[ Install Docker ]"
 apt-get update -y
-apt-get upgrade
+apt-get upgrade -y
 apt-get install -y \
     apt-transport-https \
     ca-certificates \
     curl \
     gnupg-agent \
     software-properties-common
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
+
+# Add Docker's official GPG key (updated method)
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+
 apt-get update -y
 apt-get install -y docker-ce docker-ce-cli containerd.io
 
@@ -44,10 +51,20 @@ echo "Create /etc/systemd/system/docker.service.d"
 mkdir -p /etc/systemd/system/docker.service.d
 ls -l /etc/systemd/system/docker.service.d
 
+# Configure containerd for Kubernetes
+echo "[ Configure containerd for Kubernetes ]"
+mkdir -p /etc/containerd
+containerd config default > /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
 # Enable docker service
 echo "[ Enable and start docker service ]"
 systemctl enable docker >/dev/null 2>&1
 systemctl restart docker
+
+# Restart containerd with new config
+echo "[ Restart containerd with Kubernetes config ]"
+systemctl restart containerd
 
 echo "------> Letting iptables see bridged traffic <------"
 # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#letting-iptables-see-bridged-traffic
@@ -65,13 +82,14 @@ echo "============> end prerequisites <============"
 
 echo "============> Install kubadm, kubectl & kublet <============"
 
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-cat <<EOF | tee /etc/apt/sources.list.d/kubernetes.list
-deb https://apt.kubernetes.io/ kubernetes-xenial main
-EOF
+# Add Kubernetes signing key and repository (updated method)
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+
 apt-get update -y
 apt-get install -y kubelet kubeadm kubectl 
-apt-mark hold kubelet kubeadm kubectl kubernetes-cni
+apt-mark hold kubelet kubeadm kubectl
 
 # Start and Enable kubelet service
 echo "[TASK 10] Enable and start kubelet service"
