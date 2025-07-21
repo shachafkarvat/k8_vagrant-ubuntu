@@ -2,7 +2,7 @@
 
 echo "****** Setting up master node ******"
 echo "Running kubeadm init"
-kubeadm init --apiserver-advertise-address=172.42.42.100 --pod-network-cidr=192.168.0.0/16 >> /root/kubeinit.log 2>&1
+kubeadm init --apiserver-advertise-address=192.168.56.100 --pod-network-cidr=192.168.0.0/16 >> /root/kubeinit.log 2>&1
 
 if [ $? -eq 0 ]; then
     echo "kubeadm init completed successfully"

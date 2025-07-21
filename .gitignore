@@ -1,2 +1,11 @@
 .vagrant
 .vagrant/*
+
+# VMware specific files
+*.vmx
+*.vmdk
+*.nvram
+*.vmem
+*.vmss
+*.vmsd
+.vmware/
