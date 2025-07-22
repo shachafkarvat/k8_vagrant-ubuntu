@@ -11,13 +11,17 @@ ENV['VAGRANT_NO_PARALLEL'] = 'yes'
 # Master
 Vagrant.configure(2) do |config|
   
-  # Disable the default synced folder to avoid OneDrive mount issues
+  # Disable the default synced folder to avoid mount issues
   config.vm.synced_folder ".", "/vagrant", disabled: true
   
+  # Use a stable box with consistent networking
+  config.vm.box_check_update = false
+  
+  # Common provisioning for all nodes
   config.vm.provision "shell", path: "bootstrap_common.sh"
 
   config.vm.define "kmaster" do |kmaster|
-    kmaster.vm.box = "generic/ubuntu2004"
+    kmaster.vm.box = "generic/ubuntu2204"
     kmaster.vm.hostname = "kmaster.firefly.local"
     kmaster.vm.network "private_network", ip: "172.42.42.100"
     # Removed public_network to avoid manual interface selection
@@ -33,7 +37,7 @@ Vagrant.configure(2) do |config|
   # Kubernetes Worker Nodes
   (1..NodeCount).each do |i|
     config.vm.define "kworker#{i}" do |workernode|
-      workernode.vm.box = "generic/ubuntu2004"
+      workernode.vm.box = "generic/ubuntu2204"
       workernode.vm.hostname = "kworker#{i}.firefly.local"
       workernode.vm.network "private_network", ip: "172.42.42.10#{i}"
       # Removed public_network to avoid manual interface selection
